@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1722">
+<title>TENS Bracelet</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#0c1722; --panel:#13222f; --line:#223647; --text:#e6eef5; --muted:#8aa0b2;
+  --accent:#4fc3d9; --accent-d:#0f3a47; --danger:#e5384a; --danger-d:#a3182a; --ok:#58d68d;
+  --font:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);}
+body{min-height:100vh;padding:max(14px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom));}
+main{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:1.25rem;font-weight:600;margin:0;letter-spacing:.01em}
+.status{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--danger)}
+.status.on .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(88,214,141,.2)}
+.status.busy .dot{background:var(--accent)}
+.status.on{color:var(--text)}
+.notice{background:#2b2110;border:1px solid #6b5420;color:#f2d28b;padding:10px 12px;border-radius:10px;font-size:.88rem;line-height:1.4}
+.hidden{display:none!important}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+h2{font-size:.95rem;font-weight:600;margin:0 0 12px;color:var(--muted)}
+button{font:inherit;color:var(--text);cursor:pointer;border:1px solid var(--line);background:#192c3b;
+  border-radius:12px;padding:14px;transition:transform .08s,background .15s,border-color .15s}
+button:active:not(:disabled){transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#connect{width:100%;background:var(--accent-d);border-color:var(--accent);font-weight:600}
+#connect.connected{background:#192c3b;border-color:var(--line)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.el{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 6px;font-weight:600}
+.el .ring{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;
+  font-size:.95rem;color:var(--muted);transition:all .15s}
+.el small{font-weight:400;color:var(--muted);font-size:.78rem}
+.el.active{border-color:var(--accent);background:var(--accent-d)}
+.el.active .ring{border-color:var(--accent);background:var(--accent);color:#06222b;box-shadow:0 0 0 6px rgba(79,195,217,.22)}
+#seq{width:100%;margin-top:10px}
+#seq.active{border-color:var(--accent);background:var(--accent-d)}
+#estop{width:100%;min-height:150px;font-size:1.9rem;font-weight:800;letter-spacing:.02em;border:4px solid #ffb3bb;
+  border-radius:20px;background:radial-gradient(circle at 50% 35%,#f0485a,var(--danger-d));
+  box-shadow:0 8px 0 #6d0f1c,0 14px 28px rgba(229,56,74,.3)}
+#estop:active:not(:disabled){transform:translateY(6px);box-shadow:0 2px 0 #6d0f1c}
+#estop:disabled{opacity:.35}
+#estop span{display:block;font-size:.85rem;font-weight:500;margin-top:6px;opacity:.9}
+#log{height:190px;overflow:auto;background:#0a121a;border:1px solid var(--line);border-radius:10px;
+  padding:10px;font-family:var(--mono);font-size:.78rem;line-height:1.55;margin:0}
+#log div{white-space:pre-wrap;word-break:break-word}
+.tx{color:var(--accent)} .rx{color:var(--ok)} .err{color:#ff8593} .sys{color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.row h2{margin:0}
+.link{background:none;border:none;color:var(--muted);padding:4px 8px;font-size:.82rem;text-decoration:underline}
+footer{color:var(--muted);font-size:.78rem;line-height:1.5;text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>TENS Bracelet</h1>
+    <div id="status" class="status" role="status" aria-live="polite"><span class="dot"></span><span id="statusText">Desconectado</span></div>
+  </header>
+
+  <div id="unsupported" class="notice hidden"></div>
+
+  <button id="connect" type="button">Conectar pulsera</button>
+
+  <section aria-labelledby="h-manual">
+    <h2 id="h-manual">Electrodos</h2>
+    <div class="grid">
+      <button class="el" data-cmd="1" disabled><span class="ring">1</span>Electrodo 1<small>GPIO 16</small></button>
+      <button class="el" data-cmd="2" disabled><span class="ring">2</span>Electrodo 2<small>GPIO 17</small></button>
+      <button class="el" data-cmd="3" disabled><span class="ring">3</span>Electrodo 3<small>GPIO 18</small></button>
+    </div>
+    <button id="seq" type="button" disabled>Modo secuencia (1 → 2 → 3 cada 2 s)</button>
+  </section>
+
+  <button id="estop" type="button" disabled>PARO DE EMERGENCIA<span>Apaga todos los electrodos · tecla Esc</span></button>
+
+  <section aria-labelledby="h-log">
+    <div class="row"><h2 id="h-log">Consola</h2><button id="clear" class="link" type="button">Limpiar</button></div>
+    <pre id="log" aria-live="off"></pre>
+  </section>
+
+  <footer>Uso bajo tu propia responsabilidad. No colocar electrodos sobre el pecho, cuello o cabeza. Contraindicado con marcapasos.</footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  const NUS_RX      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // web -> ESP32 (write)
+  const NUS_TX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // ESP32 -> web (notify)
+
+  const $ = id => document.getElementById(id);
+  const ui = {
+    connect: $("connect"), status: $("status"), statusText: $("statusText"),
+    seq: $("seq"), estop: $("estop"), log: $("log"), clear: $("clear"),
+    els: [...document.querySelectorAll(".el")], notice: $("unsupported")
+  };
+
+  let device = null, server = null, rxChar = null, txChar = null;
+  let connected = false, connecting = false;
+  let rxBuffer = "";
+  const queue = [];
+  let pumping = false;
+  const enc = new TextEncoder(), dec = new TextDecoder();
+
+  // ---------- Consola ----------
+  function log(kind, text) {
+    const t = new Date().toLocaleTimeString("es-MX", { hour12: false });
+    const line = document.createElement("div");
+    line.className = kind;
+    line.textContent = `[${t}] ${{ tx: "TX >", rx: "RX <", err: "ERR", sys: "SYS" }[kind]} ${text}`;
+    ui.log.appendChild(line);
+    while (ui.log.childElementCount > 300) ui.log.removeChild(ui.log.firstChild);
+    ui.log.scrollTop = ui.log.scrollHeight;
+  }
+
+  // ---------- Estado visual ----------
+  function setStatus(state, text) {
+    ui.status.className = "status " + state;
+    ui.statusText.textContent = text;
+  }
+
+  function setControls(enabled) {
+    ui.els.forEach(b => b.disabled = !enabled);
+    ui.seq.disabled = !enabled;
+    ui.estop.disabled = !enabled;
+  }
+
+  function showActive(which) { // "1" | "2" | "3" | "S" | null
+    ui.els.forEach(b => b.classList.toggle("active", b.dataset.cmd === which));
+    ui.seq.classList.toggle("active", which === "S");
+  }
+
+  function setConnected(on) {
+    connected = on;
+    setControls(on);
+    showActive(null);
+    ui.connect.textContent = on ? "Desconectar" : "Conectar pulsera";
+    ui.connect.classList.toggle("connected", on);
+    setStatus(on ? "on" : "", on ? "Conectado" : "Desconectado");
+  }
+
+  // ---------- Cola de escritura GATT (una operacion a la vez) ----------
+  async function pump() {
+    if (pumping) return;
+    pumping = true;
+    while (queue.length && connected && rxChar) {
+      const cmd = queue.shift();
+      try {
+        await rxChar.writeValue(enc.encode(cmd));
+        log("tx", cmd);
+      } catch (e) {
+        log("err", `No se pudo enviar "${cmd}": ${e.message}`);
+      }
+    }
+    pumping = false;
+  }
+
+  function send(cmd, urgent = false) {
+    if (!connected || !rxChar) { log("err", "No hay conexion con la pulsera."); return; }
+    if (urgent) { queue.length = 0; queue.unshift(cmd); } else { queue.push(cmd); }
+    pump();
+  }
+
+  // ---------- Mensajes recibidos ----------
+  function onNotify(ev) {
+    rxBuffer += dec.decode(ev.target.value);
+    let idx;
+    while ((idx = rxBuffer.indexOf("\n")) >= 0) {
+      const msg = rxBuffer.slice(0, idx).trim();
+      rxBuffer = rxBuffer.slice(idx + 1);
+      if (msg) handleMessage(msg);
+    }
+  }
+
+  function handleMessage(msg) {
+    log("rx", msg);
+    let m;
+    if ((m = msg.match(/^(?:E|STATE E)([123])(?: ON)?$/))) showActive(m[1]);
+    else if ((m = msg.match(/^SEQ E[123]$/)) || msg === "STATE SEQ") showActive("S");
+    else if (msg === "STOP" || msg === "STATE OFF") showActive(null);
+    else if (msg === "AUTO-OFF") { showActive(null); log("sys", "La pulsera se apago por limite de sesion."); }
+  }
+
+  // ---------- Conexion ----------
+  async function connect() {
+    if (connecting) return;
+    connecting = true;
+    ui.connect.disabled = true;
+    try {
+      log("sys", "Buscando TENS_Bracelet...");
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: "TENS_Bracelet" }, { services: [NUS_SERVICE] }],
+        optionalServices: [NUS_SERVICE]
+      });
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+      setStatus("busy", "Conectando...");
+      server = await device.gatt.connect();
+      const service = await server.getPrimaryService(NUS_SERVICE);
+      rxChar = await service.getCharacteristic(NUS_RX);
+      txChar = await service.getCharacteristic(NUS_TX);
+      txChar.addEventListener("characteristicvaluechanged", onNotify);
+      await txChar.startNotifications();
+      rxBuffer = "";
+      setConnected(true);
+      log("sys", `Conectado a ${device.name || "dispositivo"}.`);
+      send("?");
+    } catch (e) {
+      if (e.name === "NotFoundError") log("sys", "Seleccion cancelada.");
+      else log("err", e.message);
+      cleanup();
+      setConnected(false);
+    } finally {
+      connecting = false;
+      ui.connect.disabled = false;
+    }
+  }
+
+  function cleanup() {
+    queue.length = 0;
+    if (txChar) txChar.removeEventListener("characteristicvaluechanged", onNotify);
+    rxChar = txChar = server = null;
+  }
+
+  function onDisconnected() {
+    log("sys", "Pulsera desconectada. Los electrodos quedan apagados.");
+    if (device) device.removeEventListener("gattserverdisconnected", onDisconnected);
+    cleanup();
+    setConnected(false);
+  }
+
+  async function disconnect() {
+    try {
+      if (connected && rxChar) { queue.length = 0; await rxChar.writeValue(enc.encode("0")); log("tx", "0"); }
+    } catch (_) { /* se desconecta de todos modos */ }
+    if (device && device.gatt.connected) device.gatt.disconnect();
+    else onDisconnected();
+  }
+
+  // ---------- Eventos de UI ----------
+  ui.connect.addEventListener("click", () => connected ? disconnect() : connect());
+  ui.els.forEach(b => b.addEventListener("click", () => send(b.dataset.cmd)));
+  ui.seq.addEventListener("click", () => send("S"));
+  ui.estop.addEventListener("click", () => {
+    send("0", true);
+    if (navigator.vibrate) navigator.vibrate(120);
+  });
+  ui.clear.addEventListener("click", () => { ui.log.textContent = ""; });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && connected) { send("0", true); }
+  });
+
+  // ---------- Compatibilidad ----------
+  if (!window.isSecureContext) {
+    ui.notice.textContent = "Web Bluetooth requiere HTTPS (o localhost). Abre esta pagina desde su URL https://.";
+    ui.notice.classList.remove("hidden");
+    ui.connect.disabled = true;
+  } else if (!navigator.bluetooth) {
+    ui.notice.textContent = "Este navegador no soporta Web Bluetooth. Usa Chrome o Edge en Android, Windows, macOS o Linux. iOS/Safari no es compatible.";
+    ui.notice.classList.remove("hidden");
+    ui.connect.disabled = true;
+  }
+
+  setConnected(false);
+  log("sys", "Listo. Pulsa \"Conectar pulsera\".");
+
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register("sw.js").catch(e => log("err", "Service worker: " + e.message));
+  }
+})();
+</script>
+</body>
+</html>

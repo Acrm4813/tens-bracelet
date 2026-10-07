@@ -1,0 +1,18 @@
+{
+  "folders": [
+    { "name": "firmware (ESP32)", "path": "firmware" },
+    { "name": "web (Netlify)", "path": "docs" },
+    { "name": "raiz del repo", "path": "." }
+  ],
+  "settings": {
+    "files.eol": "\n",
+    "files.exclude": { "**/.pio": true },
+    "liveServer.settings.donotShowInfoMsg": true
+  },
+  "extensions": {
+    "recommendations": [
+      "platformio.platformio-ide",
+      "ritwickdey.liveserver"
+    ]
+  }
+}
